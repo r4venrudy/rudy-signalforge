@@ -1,0 +1,7 @@
+{"ts":"2026-11-14T11:00:00Z","source":"auth","id":"a1","fields":{"kind":"failed","account":"casey"}}
+{"ts":"2026-11-14T11:00:10Z","source":"auth","id":"a2","fields":{"kind":"failed","account":"casey"}}
+{"ts":"2026-11-14T11:00:15Z","source":"auth","id":"a3","fields":{"kind":"failed","account":"drew"}}
+{"ts":"2026-11-14T11:00:30Z","source":"auth","id":"a4","fields":{"kind":"failed","account":"casey"}}
+{"ts":"2026-11-14T11:01:00Z","source":"auth","id":"a5","fields":{"kind":"session-start","account":"casey","host":"dev-01"}}
+{"ts":"2026-11-14T11:01:25Z","source":"admin","id":"p1","fields":{"kind":"role-change","account":"casey","host":"dev-02"}}
+{"ts":"2026-11-14T11:01:40Z","source":"admin","id":"p2","fields":{"kind":"role-change","account":"casey","host":"dev-01"}}

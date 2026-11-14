@@ -1,0 +1,6 @@
+[
+  {"rule":"failed-auth-burst","group":["casey"],
+   "evidence":[{"source":"auth","id":"a1"},{"source":"auth","id":"a2"},{"source":"auth","id":"a4"}]},
+  {"rule":"session-then-privilege-change","group":["casey","dev-01"],
+   "evidence":[{"source":"auth","id":"a5"},{"source":"admin","id":"p2"}]}
+]

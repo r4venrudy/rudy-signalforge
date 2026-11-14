@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "failed-auth-burst", "severity": "medium", "type": "threshold",
+      "by": ["account"], "seconds": 30, "count": 3,
+      "stages": [[{"field":"source","op":"eq","value":"auth"},{"field":"kind","op":"eq","value":"failed"}]]
+    },
+    {
+      "id": "session-then-privilege-change", "severity": "high", "type": "sequence",
+      "by": ["account","host"], "seconds": 60,
+      "stages": [
+        [{"field":"source","op":"eq","value":"auth"},{"field":"kind","op":"eq","value":"session-start"}],
+        [{"field":"source","op":"eq","value":"admin"},{"field":"kind","op":"eq","value":"role-change"}]
+      ]
+    }
+  ]
+}
