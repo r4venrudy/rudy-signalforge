@@ -4,21 +4,24 @@ public sealed class ReplayEngine
 {
     private const int MaxGroups = 3000;
     private const int MaxAlerts = 20_000;
-    private sealed record State(DateTimeOffset Last, Sequence? Sequence, Threshold? Threshold);
+    private readonly record struct Group(string? First, string? Second, string? Third, string? Fourth);
+    private sealed record State(LinkedListNode<(Group Key, DateTimeOffset Time)> Activity,
+                                Sequence? Sequence, Threshold? Threshold);
 
     private sealed class Partition(Rule rule)
     {
         public Rule Rule { get; } = rule;
-        public Dictionary<(string?, string?, string?, string?), State> States { get; } = new();
-        public Queue<((string?, string?, string?, string?) Key, DateTimeOffset Time)> Visits { get; } = new();
+        private readonly Dictionary<Group, State> states = new();
+        // Event times are nondecreasing. Moving an updated group to the back
+        // keeps the oldest activation at the front without queuing duplicates.
+        private readonly LinkedList<(Group Key, DateTimeOffset Time)> activity = new();
 
         public Evidence[]? Accept(SecurityEvent item, Evidence evidence)
         {
-            while (Visits.TryPeek(out var next) && item.Time - next.Time > Rule.Within)
+            while (activity.First is { } next && item.Time - next.Value.Time > Rule.Within)
             {
-                Visits.Dequeue();
-                if (States.TryGetValue(next.Key, out State? current) && current.Last == next.Time)
-                    States.Remove(next.Key);
+                states.Remove(next.Value.Key);
+                activity.RemoveFirst();
             }
             var values = new string?[4];
             for (int index = 0; index < Rule.By.Length; index++)
@@ -27,27 +30,26 @@ public sealed class ReplayEngine
                 if (values[index] is null)
                     return null;
             }
-            var key = (values[0], values[1], values[2], values[3]);
-            if (!States.TryGetValue(key, out State? state))
+            var key = new Group(values[0], values[1], values[2], values[3]);
+            if (!states.TryGetValue(key, out State? state))
             {
                 if (!Rule.Stages[0].Matches(item))
                     return null;
-                if (States.Count == MaxGroups)
+                if (states.Count == MaxGroups)
                     throw new FormatException($"active group limit exceeded for rule {Rule.Id}");
+                var node = activity.AddLast((key, item.Time));
                 state = Rule.Ordered
-                    ? new(item.Time, new Sequence(Rule.Stages, Rule.Within), null)
-                    : new(item.Time, null, new Threshold(Rule.Stages[0], Rule.Threshold, Rule.Within));
-                Visits.Enqueue((key, item.Time));
-                States.Add(key, state);
+                    ? new(node, new Sequence(Rule.Stages, Rule.Within), null)
+                    : new(node, null, new Threshold(Rule.Stages[0], Rule.Threshold, Rule.Within));
+                states.Add(key, state);
             }
-            else if (state.Last != item.Time && Rule.Stages.Any(selector => selector.Matches(item)))
+            else if (state.Activity.Value.Time != item.Time &&
+                     Rule.Stages.Any(selector => selector.Matches(item)))
             {
-                States[key] = state with { Last = item.Time };
-                Visits.Enqueue((key, item.Time));
+                activity.Remove(state.Activity);
+                state.Activity.Value = (key, item.Time);
+                activity.AddLast(state.Activity);
             }
-            // The CLI returns an input error rather than an incomplete result.
-            if (Visits.Count > 20_000)
-                throw new FormatException($"window activity limit exceeded for rule {Rule.Id}");
             return state.Sequence is { } sequence
                 ? sequence.Accept(item, evidence) : state.Threshold!.Accept(item, evidence);
         }

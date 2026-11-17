@@ -84,6 +84,17 @@ with TemporaryDirectory() as folder:
             actual_hits.append((alert["rule"], evidence[-1], alert["group"][0]))
         check(actual_hits == expected_hits, (trial, expected_hits, actual_hits))
 
+    # Repeated events for one group need a single expiry record.
+    store(rules, {"version": 1, "rules": [{**threshold, "seconds": 86400}]})
+    times = [*range(20100), 110000, 110001]
+    events.write_text("\n".join(json.dumps(make_event(i, clock, "a", "x"))
+                                for i, clock in enumerate(times)), encoding="utf-8")
+    alerts = invoke("replay", rules, events)["alerts"]
+    check([[event["id"] for event in alert["evidence"]] for alert in alerts] ==
+          [["e0", "e1"], ["e20100", "e20101"]], "busy group expires and re-arms normally")
+    store(rules, {"version": 1, "rules": [sequence, threshold]})
+
+
     store(expected, [])
     result = invoke("test", examples/"rules.json", examples/"events.jsonl", expected, status=3)
     check(result["unexpected"] == 2 and not result["passed"], result)
