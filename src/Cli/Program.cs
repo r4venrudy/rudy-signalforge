@@ -11,7 +11,7 @@ try
     }
     if (args is ["--help"])
     {
-        Console.WriteLine("signalforge lint RULES\nsignalforge replay RULES EVENTS\nsignalforge test RULES EVENTS EXPECTED");
+        Console.WriteLine("signalforge lint RULES\nsignalforge replay RULES EVENTS\nsignalforge test RULES EVENTS EXPECTED\nUse - for EVENTS to read from standard input.");
         return 0;
     }
     if (args.Length < 2 || !((args[0] == "lint" && args.Length == 2) ||
@@ -24,7 +24,7 @@ try
         Console.WriteLine(JsonSerializer.Serialize(new { rules = rules.Select(rule => rule.Id) }, options));
         return 0;
     }
-    using FileStream stream = File.OpenRead(args[2]);
+    using Stream stream = args[2] == "-" ? Console.OpenStandardInput() : File.OpenRead(args[2]);
     var alerts = new ReplayEngine().Run(rules, Inputs.ReadEvents(stream));
     if (args[0] == "test")
     {

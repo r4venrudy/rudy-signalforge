@@ -23,6 +23,8 @@ dotnet bin/signalforge.dll test examples/rules.json examples/events.jsonl exampl
 
 The fixture detects three authentication failures in 30 seconds for one account. A separate rule correlates an authentication session with an administrative role change on the same account and host. The test checks both alerts and their exact evidence IDs.
 
+Use - in place of the event file to pass a normalized JSONL stream to replay or test.
+
 ## Author detections
 
 Use one JSON object per event. Events are ordered by timestamp, then file order for ties. Each source and ID combination is unique within a capture. A timestamp includes Z or a numeric UTC offset. Fields use bounded string values. Normalize raw sensor exports to this input first.

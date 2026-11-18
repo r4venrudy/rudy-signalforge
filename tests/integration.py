@@ -20,8 +20,8 @@ def check(condition, detail):
     checks += 1
 
 
-def invoke(*args, status=0):
-    proc = subprocess.run([runtime, binary, *map(str, args)], capture_output=True,
+def invoke(*args, status=0, stdin=None):
+    proc = subprocess.run([runtime, binary, *map(str, args)], capture_output=True, input=stdin,
                           encoding="utf-8", timeout=20)
     check(proc.returncode == status, (args, proc.returncode, proc.stderr))
     if status == 2:
@@ -47,6 +47,8 @@ def make_event(index, clock, kind, group):
 fixture = invoke("test", examples/"rules.json", examples/"events.jsonl", examples/"expected.json")
 check(fixture == dict(passed=True, expected=2, actual=2, missing=0, unexpected=0), fixture)
 check(len(invoke("lint", examples/"rules.json")["rules"]) == 2, "fixture rules")
+streamed = invoke("replay", examples/"rules.json", "-", stdin=(examples/"events.jsonl").read_text())
+check(streamed == invoke("replay", examples/"rules.json", examples/"events.jsonl"), "stdin and file replay agree")
 
 with TemporaryDirectory() as folder:
     rules, events, expected = (Path(folder) / name for name in ("rules.json", "events.jsonl", "expected.json"))
