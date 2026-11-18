@@ -18,6 +18,9 @@ public static partial class Inputs
     internal static JsonDocument Parse(ReadOnlyMemory<byte> data) =>
         JsonDocument.Parse(data, new JsonDocumentOptions { MaxDepth = 8, AllowDuplicateProperties = false });
 
+    private static ReadOnlyMemory<byte> StripUtf8Signature(ReadOnlyMemory<byte> data) =>
+        data.Span.StartsWith("\uFEFF"u8) ? data[3..] : data;
+
     internal static JsonDocument OpenRuleFile(string path)
     {
         using FileStream file = File.OpenRead(path);
@@ -27,7 +30,7 @@ public static partial class Inputs
         file.ReadExactly(bytes);
         if (file.ReadByte() != -1)
             throw new FormatException("rule file grew while reading");
-        return Parse(bytes);
+        return Parse(StripUtf8Signature(bytes));
     }
 
     internal static void Object(JsonElement value, params string[] allowed)
@@ -101,7 +104,8 @@ public static partial class Inputs
             SecurityEvent item;
             try
             {
-                item = Decode(line.WrittenMemory);
+                ReadOnlyMemory<byte> bytes = line.WrittenMemory;
+                item = Decode(number == 1 ? StripUtf8Signature(bytes) : bytes);
             }
             catch (Exception error) when (error is JsonException or FormatException or
                                                 InvalidOperationException or DecoderFallbackException)

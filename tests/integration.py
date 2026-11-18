@@ -50,6 +50,15 @@ check(len(invoke("lint", examples/"rules.json")["rules"]) == 2, "fixture rules")
 
 with TemporaryDirectory() as folder:
     rules, events, expected = (Path(folder) / name for name in ("rules.json", "events.jsonl", "expected.json"))
+    # Accept a UTF-8 signature at the beginning of each input file.
+    for target, name in ((rules, "rules.json"), (events, "events.jsonl"), (expected, "expected.json")):
+        target.write_bytes(b"\xef\xbb\xbf" + (examples/name).read_bytes())
+    check(invoke("test", rules, events, expected)["passed"], "valid leading UTF-8 signature")
+    rows = (examples/"events.jsonl").read_bytes().splitlines()
+    events.write_bytes(rows[0] + b"\n\xef\xbb\xbf" + rows[1] + b"\n")
+    invoke("replay", rules, events, status=2)
+
+
     sequence = dict(id="sequence", severity="high", type="sequence", by=["group"], seconds=4,
                     stages=[term("a"), term("a"), term("b")])
     threshold = dict(id="threshold", severity="low", type="threshold", by=["group"], seconds=4,
